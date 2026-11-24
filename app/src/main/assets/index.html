@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#111418">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Relojes</title>
+<style>
+  :root{
+    --bg:#111418; --card:#1c2128; --card2:#242b34; --txt:#e8edf2; --muted:#8b96a3;
+    --accent:#22c55e; --accentbg:#0f3d24; --down:#38bdf8; --downbg:#0c2f42;
+    --warn:#f59e0b; --over:#ef4444; --line:#2d3540;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;background:var(--bg);color:var(--txt);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  body{padding:env(safe-area-inset-top) 0 calc(100px + env(safe-area-inset-bottom))}
+  .mono{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+  button{font-family:inherit}
+  header{position:sticky;top:0;z-index:5;background:var(--bg);padding:12px 16px 10px;border-bottom:1px solid var(--line)}
+  .toprow{display:flex;justify-content:space-between;align-items:center}
+  .totlabel{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+  .wl{background:var(--card2);border:1px solid var(--line);color:var(--muted);border-radius:99px;padding:5px 10px;font-size:12px}
+  .wl.on{color:var(--accent);border-color:var(--accent)}
+  .totrow{display:flex;justify-content:space-between;align-items:baseline}
+  .total{font-size:36px;font-weight:700}
+  .total.over{color:var(--over)}
+  .goal{font-size:14px;color:var(--muted)}
+  .bar{height:8px;background:var(--card2);border-radius:99px;overflow:hidden;margin-top:6px}
+  .bar>div{height:100%;width:0;background:var(--accent);transition:width .3s}
+  .bar.near>div{background:var(--warn)} .bar.over>div{background:var(--over)}
+  .status{font-size:13px;color:var(--muted);margin-top:6px;min-height:18px}
+  .status.over{color:var(--over);font-weight:600}
+  .tabs{display:flex;gap:6px;margin-top:10px;background:var(--card);padding:4px;border-radius:12px}
+  .tabs button{flex:1;border:none;background:none;color:var(--muted);padding:9px;border-radius:9px;font-size:14px;font-weight:600}
+  .tabs button.sel{background:var(--card2);color:var(--txt)}
+  .view{display:none} .view.sel{display:block}
+  main{padding:12px 16px;display:grid;gap:10px}
+  .clock{background:var(--card);border:2px solid transparent;border-radius:16px;padding:12px;display:flex;align-items:center;gap:10px;user-select:none;cursor:pointer}
+  .clock:active{transform:scale(.99)}
+  .clock.on{background:var(--accentbg);border-color:var(--accent)}
+  .clock.dn.on{background:var(--downbg);border-color:var(--down)}
+  .clock.done{border-color:var(--over)}
+  .clock .info{flex:1;min-width:0}
+  .clock .name{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tag{font-size:11px;font-weight:600;padding:2px 6px;border-radius:6px;background:var(--card2);color:var(--down);margin-left:6px;vertical-align:middle}
+  .clock .time{font-size:32px;font-weight:700;margin-top:2px}
+  .clock.on .time{color:var(--accent)} .clock.dn.on .time{color:var(--down)}
+  .clock.done .time{color:var(--over)}
+  .clock .sub{font-size:12px;color:var(--muted);margin-top:2px}
+  .dot{width:10px;height:10px;border-radius:50%;background:var(--line);flex:none}
+  .clock.on .dot{background:var(--accent);animation:pulse 1.2s infinite}
+  .clock.dn.on .dot{background:var(--down)}
+  @keyframes pulse{50%{opacity:.3}}
+  .btns{display:flex;flex-direction:column;gap:6px;flex:none}
+  .ibtn{background:var(--card2);border:1px solid var(--line);color:var(--txt);min-width:78px;height:38px;border-radius:11px;font-size:13px;font-weight:600;padding:0 10px}
+  td.ed{cursor:pointer} td.ed:active{background:var(--card2)}
+  .empty{color:var(--muted);text-align:center;padding:40px 20px;line-height:1.5}
+  .card{margin:12px 16px 0;background:var(--card);border-radius:16px;padding:12px}
+  .card h2{font-size:13px;margin:0 0 8px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+  .tablewrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse;font-size:13px;min-width:100%}
+  th,td{padding:8px 6px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--line)}
+  th{color:var(--muted);font-weight:600;font-size:12px}
+  th.today{color:var(--accent)}
+  td:first-child,th:first-child{text-align:left;position:sticky;left:0;background:var(--card);max-width:110px;overflow:hidden;text-overflow:ellipsis}
+  td.z{color:#4b5563}
+  tr.tot td{font-weight:700;border-bottom:none}
+  td.del{color:var(--muted);font-style:italic}
+  td.ov{color:var(--over)}
+  .actions{display:flex;gap:10px;margin:14px 16px 0}
+  .btn{flex:1;padding:13px;border-radius:14px;border:1px solid var(--line);background:var(--card);color:var(--txt);font-size:15px;font-weight:600}
+  .btn.pri{background:var(--accent);color:#06210f;border-color:var(--accent)}
+  .btn.danger{color:#fca5a5;border-color:#5b2626}
+  .note{font-size:12px;color:var(--muted);margin:10px 16px 0;line-height:1.4}
+  .fab{position:fixed;right:18px;bottom:calc(18px + env(safe-area-inset-bottom));width:62px;height:62px;border-radius:50%;border:none;background:var(--accent);color:#06210f;font-size:34px;font-weight:700;box-shadow:0 6px 20px rgba(0,0,0,.5)}
+  .toast{position:fixed;left:16px;right:16px;bottom:calc(92px + env(safe-area-inset-bottom));background:var(--warn);color:#1a1200;padding:14px 16px;border-radius:14px;font-weight:600;display:none;z-index:30}
+  .toast.final{background:var(--over);color:#fff}
+  .toast.show{display:block}
+  /* modal */
+  .ov-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:flex-end;z-index:20}
+  .ov-bg.show{display:flex}
+  .modal{background:var(--card);width:100%;border-radius:20px 20px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom));max-height:90vh;overflow:auto}
+  .modal h3{margin:0 0 14px;font-size:18px}
+  .fl{font-size:12px;color:var(--muted);margin:12px 0 6px;text-transform:uppercase;letter-spacing:.05em}
+  .modal input[type=text],.modal select{width:100%;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--card2);color:var(--txt);font-size:16px}
+  .hms{display:flex;gap:8px;align-items:center}
+  .hms input{width:100%;padding:12px 6px;border-radius:12px;border:1px solid var(--line);background:var(--card2);color:var(--txt);font-size:22px;text-align:center}
+  .hms span{color:var(--muted);font-size:12px}
+  .seg{display:flex;gap:6px;background:var(--card2);padding:4px;border-radius:12px}
+  .seg button{flex:1;border:none;background:none;color:var(--muted);padding:10px;border-radius:9px;font-size:14px;font-weight:600}
+  .seg button.sel{background:var(--bg);color:var(--txt)}
+  .quick{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  .quick button{flex:1;min-width:60px;padding:9px 4px;border-radius:10px;border:1px solid var(--line);background:var(--card2);color:var(--txt);font-size:13px}
+  .mrow{display:flex;gap:10px;margin-top:18px}
+  .hint{font-size:12px;color:var(--muted);margin-top:6px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="toprow">
+    <div class="totlabel">Total de hoy</div>
+    <button class="wl" id="wl">☀ Pantalla encendida: no</button>
+  </div>
+  <div class="totrow">
+    <div id="total" class="total mono">00:00:00</div>
+    <div class="goal">/ 08:00:00</div>
+  </div>
+  <div id="bar" class="bar"><div></div></div>
+  <div id="status" class="status">Todo en pausa</div>
+  <div class="tabs">
+    <button data-tab="vRel" class="sel">Relojes</button>
+    <button data-tab="vSem">Semana</button>
+  </div>
+</header>
+
+<div id="vRel" class="view sel">
+  <main id="list"></main>
+</div>
+
+<div id="vSem" class="view">
+  <div class="card">
+    <h2 id="semTitle">Horas por día</h2>
+    <div class="tablewrap"><table id="semTable"></table></div>
+  </div>
+  <div class="actions"><button class="btn danger" id="resetWeek">Resetear semana</button></div>
+  <p class="note">Toca cualquier celda para editar ese día. El día cambia solo a medianoche. "Resetear semana" empieza una semana nueva desde hoy; los días anteriores dejan de mostrarse.</p>
+</div>
+
+<button class="fab" id="add" aria-label="Agregar reloj">+</button>
+<div class="toast" id="toast"></div>
+
+<!-- Modal configurar -->
+<div class="ov-bg" id="mCfg"><div class="modal">
+  <h3>Configurar reloj</h3>
+  <div class="fl">Nombre</div>
+  <input type="text" id="cfgName" maxlength="40">
+  <div class="fl">Tipo</div>
+  <div class="seg" id="cfgMode">
+    <button data-m="up">⏱ Cronómetro</button>
+    <button data-m="down">⏳ Cuenta regresiva</button>
+  </div>
+  <div class="fl" id="cfgDurLabel">Duración</div>
+  <div class="hms">
+    <input type="number" inputmode="numeric" min="0" max="99" id="cfgH"><span>h</span>
+    <input type="number" inputmode="numeric" min="0" max="59" id="cfgM"><span>m</span>
+    <input type="number" inputmode="numeric" min="0" max="59" id="cfgS"><span>s</span>
+  </div>
+  <div class="quick" id="cfgQuick">
+    <button data-q="300">5m</button><button data-q="900">15m</button><button data-q="1800">30m</button>
+    <button data-q="3600">1h</button><button data-q="7200">2h</button>
+  </div>
+  <div class="hint" id="cfgHint"></div>
+  <div class="mrow">
+    <button class="btn" id="cfgCancel">Cancelar</button>
+    <button class="btn pri" id="cfgSave">Guardar</button>
+  </div>
+  <div class="mrow">
+    <button class="btn danger" id="cfgDel">Eliminar reloj</button>
+  </div>
+</div></div>
+
+<!-- Modal editar tiempo -->
+<div class="ov-bg" id="mEdit"><div class="modal">
+  <h3 id="edTitle">Editar tiempo</h3>
+  <div class="fl">Día</div>
+  <select id="edDay"></select>
+  <div class="fl">Tiempo registrado ese día</div>
+  <div class="hms">
+    <input type="number" inputmode="numeric" min="0" max="24" id="edH"><span>h</span>
+    <input type="number" inputmode="numeric" min="0" max="59" id="edM"><span>m</span>
+    <input type="number" inputmode="numeric" min="0" max="59" id="edS"><span>s</span>
+  </div>
+  <div class="quick">
+    <button data-a="-1800">−30m</button><button data-a="-300">−5m</button>
+    <button data-a="300">+5m</button><button data-a="1800">+30m</button><button data-a="3600">+1h</button>
+  </div>
+  <div class="hint">Úsalo si olvidaste iniciar o parar el reloj. Esto cambia el total del día y la semana.</div>
+  <div id="edDownBox">
+    <div class="fl">Tiempo restante de la cuenta regresiva</div>
+    <div class="hms">
+      <input type="number" inputmode="numeric" min="0" max="99" id="erH"><span>h</span>
+      <input type="number" inputmode="numeric" min="0" max="59" id="erM"><span>m</span>
+      <input type="number" inputmode="numeric" min="0" max="59" id="erS"><span>s</span>
+    </div>
+  </div>
+  <div class="mrow">
+    <button class="btn" id="edCancel">Cancelar</button>
+    <button class="btn pri" id="edSave">Guardar</button>
+  </div>
+</div></div>
+
+<script>
+(function(){
+  const LIMIT = 8 * 3600e3, PRE = 15e3;
+  const KEY = 'relojes_v2', OLDKEY = 'relojes_v1';
+  const $ = id => document.getElementById(id);
+
+  // ---------- Fechas ----------
+  const pad = n => String(n).padStart(2, '0');
+  const dkey = t => { const d = new Date(t); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); };
+  const nextMidnight = t => { const d = new Date(t); return new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1).getTime(); };
+  const fromKey = k => { const [y, m, d] = k.split('-').map(Number); return new Date(y, m - 1, d); };
+  function daysFrom(startKey){
+    const out = [], today = dkey(Date.now());
+    let d = fromKey(startKey);
+    if (dkey(d) > today) d = fromKey(today);
+    while (dkey(d) <= today){ out.push(dkey(d)); d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1); }
+    return out;
+  }
+  const DOW = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+  const dLabel = k => { const d = fromKey(k); return DOW[d.getDay()] + ' ' + d.getDate(); };
+
+  // ---------- Estado ----------
+  // clock: {id,name,deleted,mode:'up'|'down',targetMs,timerMs,a15,a0}
+  // log: { 'YYYY-MM-DD': { clockId: ms } }
+  let S = load();
+  function blank(){ return { clocks: [], log: {}, activeId: null, startedAt: null, weekStart: dkey(Date.now()), seq: 0, tot: { a15: false, a0: false } }; }
+  function load(){
+    try {
+      const r = localStorage.getItem(KEY);
+      if (r) return JSON.parse(r);
+      const o = localStorage.getItem(OLDKEY);   // migrar versión anterior
+      if (o){
+        const v = JSON.parse(o), s = blank(), today = dkey(Date.now()), ws = dkey(v.weekStart || Date.now());
+        s.weekStart = ws;
+        v.clocks.forEach(c => {
+          s.clocks.push({ id: c.id, name: c.name, deleted: c.deleted, mode: 'up', targetMs: 0, timerMs: 0, a15: false, a0: false });
+          if (c.dayMs){ (s.log[today] = s.log[today] || {})[c.id] = c.dayMs; }
+          const rest = (c.weekMs || 0) - (c.dayMs || 0);
+          if (rest > 0){ const k = ws === today ? today : ws; (s.log[k] = s.log[k] || {})[c.id] = ((s.log[k] || {})[c.id] || 0) + rest; }
+        });
+        return s;
+      }
+    } catch(e){}
+    return blank();
+  }
+  const NATIVE = !!window.Android;
+  function resched(){
+    if (!NATIVE) return;
+    try {
+      Android.cancelAll();
+      const a = byId(S.activeId); if (!a) return;
+      const now = Date.now(), T = todayTotal();
+      const sch = (id, ms, t, x) => { if (ms > 0) Android.schedule(id, now + ms, t, x); };
+      sch(1, LIMIT - PRE - T, '⚠️ Faltan 15 s', 'Faltan 15 s para completar las 8 horas de hoy.');
+      sch(2, LIMIT - T, '⏰ 8 horas cumplidas', 'Llegaste a las 8 horas de hoy.');
+      if (a.mode === 'down'){
+        const r = remaining(a);
+        sch(3, r - PRE, '⚠️ Faltan 15 s', 'Faltan 15 s para que termine "' + a.name + '".');
+        sch(4, r, '⏳ Se acabó', 'Se acabó "' + a.name + '".');
+      } else if (a.targetMs > 0){
+        const v = todayMs(a);
+        sch(3, a.targetMs - PRE - v, '⚠️ Faltan 15 s', 'Faltan 15 s para que "' + a.name + '" complete su meta.');
+        sch(4, a.targetMs - v, '✅ Meta cumplida', '"' + a.name + '" completó su meta.');
+      }
+    } catch(e){}
+  }
+  let lastSave = 0;
+  function save(force){
+    const now = Date.now();
+    if (force) resched();
+    if (!force && now - lastSave < 1000) return;
+    lastSave = now;
+    try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e){}
+  }
+  const byId = id => S.clocks.find(c => c.id === id);
+  const get = (k, id) => (S.log[k] && S.log[k][id]) || 0;
+  function put(k, id, ms){ (S.log[k] = S.log[k] || {})[id] = Math.max(0, Math.round(ms)); }
+  const todayMs = c => get(dkey(Date.now()), c.id);
+  const todayTotal = () => { const L = S.log[dkey(Date.now())] || {}; return Object.values(L).reduce((a, b) => a + b, 0); };
+  const remaining = c => Math.max(0, c.targetMs - c.timerMs);
+
+  // Pasa el tiempo corrido al registro, partiendo en la medianoche
+  function commit(){
+    if (S.activeId == null || !S.startedAt) return;
+    const now = Date.now(), c = byId(S.activeId);
+    let t = S.startedAt;
+    if (now <= t) return;
+    if (c){
+      const stop = c.mode === 'down' ? Math.min(now, t + remaining(c)) : now;
+      while (t < stop){ const end = Math.min(nextMidnight(t), stop); put(dkey(t), c.id, get(dkey(t), c.id) + (end - t)); t = end; }
+      if (c.mode === 'down') c.timerMs += stop - S.startedAt;
+    }
+    S.startedAt = now;
+  }
+
+  // ---------- Acciones ----------
+  function tap(id){
+    unlockAudio();
+    commit();
+    const c = byId(id);
+    if (S.activeId === id){ S.activeId = null; S.startedAt = null; }
+    else {
+      if (c.mode === 'down' && remaining(c) <= 0){ c.timerMs = 0; c.a15 = c.a0 = false; } // reiniciar regresiva terminada
+      S.activeId = id; S.startedAt = Date.now();
+    }
+    vibe(30); save(true); render();
+  }
+
+  function add(){
+    unlockAudio();
+    S.seq = (S.seq || 0) + 1;
+    const n = S.clocks.filter(c => !c.deleted).length + 1;
+    S.clocks.push({ id: Date.now() + '_' + S.seq, name: 'Reloj ' + n, deleted: false, mode: 'up', targetMs: 0, timerMs: 0, a15: false, a0: false });
+    save(true); render();
+    setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 50);
+  }
+
+  function resetWeek(){
+    if (!confirm('¿Resetear la semana?\nLa semana nueva empieza hoy. Las horas de hoy se conservan.')) return;
+    commit();
+    S.weekStart = dkey(Date.now());
+    // limpiar registros antiguos y relojes eliminados sin tiempo
+    Object.keys(S.log).forEach(k => { if (k < S.weekStart) delete S.log[k]; });
+    S.clocks = S.clocks.filter(c => !c.deleted || Object.keys(S.log).some(k => get(k, c.id) > 0));
+    save(true); render();
+  }
+
+  // ---------- Modal configurar ----------
+  let cfgId = null, cfgMode = 'up';
+  function setHMS(prefix, ms){ const s = Math.round(ms / 1000); $(prefix + 'H').value = Math.floor(s / 3600); $(prefix + 'M').value = Math.floor(s % 3600 / 60); $(prefix + 'S').value = s % 60; }
+  function getHMS(prefix){ const v = x => Math.max(0, parseInt($(prefix + x).value, 10) || 0); return (v('H') * 3600 + v('M') * 60 + v('S')) * 1000; }
+  function paintMode(){
+    document.querySelectorAll('#cfgMode button').forEach(b => b.classList.toggle('sel', b.dataset.m === cfgMode));
+    $('cfgDurLabel').textContent = cfgMode === 'down' ? 'Duración de la cuenta regresiva' : 'Meta (opcional, 0 = sin meta)';
+    $('cfgHint').textContent = cfgMode === 'down'
+      ? 'Avisa 15 s antes y al llegar a 0; luego el reloj se detiene. Tócalo otra vez para reiniciarla.'
+      : 'Si pones una meta, avisa 15 s antes y al cumplirla; el reloj sigue corriendo.';
+  }
+  function openCfg(id){
+    const c = byId(id); if (!c) return;
+    cfgId = id; cfgMode = c.mode;
+    $('cfgName').value = c.name;
+    setHMS('cfg', c.targetMs);
+    paintMode();
+    $('mCfg').classList.add('show');
+  }
+  function saveCfg(){
+    const c = byId(cfgId); if (!c) return close();
+    commit();
+    const nm = $('cfgName').value.trim(); if (nm) c.name = nm.slice(0, 40);
+    const tgt = getHMS('cfg');
+    if (cfgMode === 'down' && tgt <= 0){ alert('Pon una duración mayor a 0 para la cuenta regresiva.'); return; }
+    if (c.mode !== cfgMode || c.targetMs !== tgt){ c.timerMs = 0; c.a15 = c.a0 = false; }
+    c.mode = cfgMode; c.targetMs = tgt;
+    close(); save(true); render();
+  }
+  function delCfg(){
+    const c = byId(cfgId); if (!c) return close();
+    if (!confirm('¿Eliminar "' + c.name + '"?\nSu tiempo ya registrado sigue contando en el día y en la semana.')) return;
+    commit();
+    if (S.activeId === c.id){ S.activeId = null; S.startedAt = null; }
+    c.deleted = true;
+    close(); save(true); render();
+  }
+
+  // ---------- Modal editar tiempo ----------
+  let edId = null;
+  function openEdit(id, dayK){
+    const c = byId(id); if (!c) return;
+    commit();
+    edId = id;
+    $('edDownBox').style.display = c.mode === 'down' ? '' : 'none';
+    if (c.mode === 'down') setHMS('er', remaining(c));
+    $('edTitle').textContent = 'Editar tiempo · ' + c.name;
+    const days = daysFrom(S.weekStart).reverse();
+    $('edDay').innerHTML = days.map((k, i) => '<option value="' + k + '">' + (i === 0 ? 'Hoy · ' : '') + dLabel(k) + ' (' + k + ')</option>').join('');
+    const k0 = dayK && days.includes(dayK) ? dayK : days[0];
+    $('edDay').value = k0;
+    setHMS('ed', get(k0, id));
+    $('mEdit').classList.add('show');
+  }
+  function saveEdit(){
+    const c = byId(edId); if (!c) return close();
+    commit();
+    const k = $('edDay').value, ms = getHMS('ed');
+    if (ms > 24 * 3600e3){ alert('Un día no puede tener más de 24 horas.'); return; }
+    put(k, c.id, ms);
+    if (c.mode === 'down'){
+      const r = Math.min(getHMS('er'), c.targetMs);
+      c.timerMs = c.targetMs - r; c.a15 = c.a0 = false;
+    }
+    close(); save(true); render();
+  }
+
+  function close(){ $('mCfg').classList.remove('show'); $('mEdit').classList.remove('show'); cfgId = edId = null; }
+
+  // ---------- Alertas ----------
+  let actx = null;
+  function unlockAudio(){
+    try { if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === 'suspended') actx.resume(); } catch(e){}
+  }
+  function beep(times, dur, freq){
+    if (!actx) return;
+    try {
+      const t0 = actx.currentTime;
+      for (let i = 0; i < times; i++){
+        const o = actx.createOscillator(), g = actx.createGain();
+        o.type = 'square'; o.frequency.value = freq;
+        g.gain.setValueAtTime(0.0001, t0 + i * dur * 2);
+        g.gain.exponentialRampToValueAtTime(0.25, t0 + i * dur * 2 + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + i * dur * 2 + dur);
+        o.connect(g).connect(actx.destination);
+        o.start(t0 + i * dur * 2); o.stop(t0 + i * dur * 2 + dur + 0.05);
+      }
+    } catch(e){}
+  }
+  let quiet = false;
+  function alarm(final, msg){
+    if (quiet){ toast(msg, final); return; }
+    if (final){ vibe([600, 200, 600, 200, 600, 200, 600]); beep(6, 0.35, 880); }
+    else { vibe([200, 150, 200]); beep(3, 0.15, 660); }
+    toast(msg, final);
+  }
+  function vibe(p){ try { navigator.vibrate && navigator.vibrate(p); } catch(e){} }
+  let toastT;
+  function toast(msg, final){
+    const t = $('toast'); t.textContent = msg; t.classList.toggle('final', !!final); t.classList.add('show');
+    clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), final ? 12000 : 6000);
+  }
+
+  function checkAlerts(){
+    // total del día (8h)
+    const T = todayTotal(), ta = S.tot;
+    if (T < LIMIT - PRE){ ta.a15 = ta.a0 = false; }
+    else {
+      if (T >= LIMIT && !ta.a0){ ta.a0 = ta.a15 = true; alarm(true, '⏰ Llegaste a las 8 horas de hoy. Puedes seguir; el exceso se marca en rojo.'); }
+      else if (!ta.a15){ ta.a15 = true; alarm(false, '⚠️ Faltan 15 s para completar las 8 horas de hoy.'); }
+    }
+    // relojes
+    S.clocks.forEach(c => {
+      if (c.deleted) return;
+      if (c.mode === 'down'){
+        const r = remaining(c);
+        if (r > PRE){ c.a15 = c.a0 = false; return; }
+        if (r <= 0){
+          if (!c.a0){
+            c.a0 = c.a15 = true; c.timerMs = c.targetMs;
+            if (S.activeId === c.id){ S.activeId = null; S.startedAt = null; }
+            alarm(true, '⏳ Se acabó "' + c.name + '".');
+          }
+        } else if (!c.a15){ c.a15 = true; alarm(false, '⚠️ Faltan 15 s para que termine "' + c.name + '".'); }
+      } else if (c.targetMs > 0){
+        const v = todayMs(c);
+        if (v < c.targetMs - PRE){ c.a15 = c.a0 = false; return; }
+        if (v >= c.targetMs){ if (!c.a0){ c.a0 = c.a15 = true; alarm(true, '✅ "' + c.name + '" completó su meta de ' + fmt(c.targetMs) + '.'); } }
+        else if (!c.a15){ c.a15 = true; alarm(false, '⚠️ Faltan 15 s para que "' + c.name + '" complete su meta.'); }
+      }
+    });
+  }
+
+  // ---------- Formato ----------
+  function fmt(ms){ const s = Math.floor(ms / 1000); return pad(Math.floor(s / 3600)) + ':' + pad(Math.floor(s % 3600 / 60)) + ':' + pad(s % 60); }
+  function fmtCeil(ms){ return fmt(Math.ceil(ms / 1000) * 1000); }
+  function fmtHM(ms){ const m = Math.floor(ms / 60000); return Math.floor(m / 60) + ':' + pad(m % 60); }
+  function esc(s){ return String(s).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
+
+  // ---------- Render ----------
+  function cardMain(c){ return c.mode === 'down' ? fmtCeil(remaining(c)) : fmt(todayMs(c)); }
+  function cardSub(c){
+    if (c.mode === 'down'){
+      const r = remaining(c);
+      return (r <= 0 ? 'Terminado · toca para reiniciar' : 'Regresiva de ' + fmt(c.targetMs)) + ' · Hoy ' + fmtHM(todayMs(c));
+    }
+    return c.targetMs > 0 ? 'Meta ' + fmt(c.targetMs) + ' · ' + Math.min(100, Math.floor(todayMs(c) / c.targetMs * 100)) + '%' : 'Cronómetro';
+  }
+  function render(){
+    const vis = S.clocks.filter(c => !c.deleted);
+    $('list').innerHTML = !vis.length
+      ? '<div class="empty">No hay relojes.<br>Toca <b>+</b> para crear uno.</div>'
+      : vis.map(c => {
+          const done = c.mode === 'down' && remaining(c) <= 0;
+          return '<div class="clock' + (c.mode === 'down' ? ' dn' : '') + (c.id === S.activeId ? ' on' : '') + (done ? ' done' : '') + '" data-id="' + c.id + '">' +
+            '<span class="dot"></span>' +
+            '<div class="info"><div class="name">' + esc(c.name) + (c.mode === 'down' ? '<span class="tag">⏳</span>' : '') + '</div>' +
+            '<div class="time mono" data-t="' + c.id + '">' + cardMain(c) + '</div>' +
+            '<div class="sub mono" data-s="' + c.id + '">' + cardSub(c) + '</div></div>' +
+            '<div class="btns"><button class="ibtn" data-ed="' + c.id + '">✎ Editar</button>' +
+            '<button class="ibtn" data-cfg="' + c.id + '">⚙ Ajustes</button></div>' +
+          '</div>';
+        }).join('');
+    renderWeek();
+    header();
+  }
+
+  function renderWeek(){
+    const days = daysFrom(S.weekStart), today = dkey(Date.now());
+    const rows = S.clocks.filter(c => !c.deleted || days.some(k => get(k, c.id) > 0));
+    $('semTitle').textContent = 'Horas por día · desde ' + dLabel(S.weekStart);
+    if (!rows.length){ $('semTable').innerHTML = '<tr><td class="z">Sin datos todavía.</td></tr>'; return; }
+    let h = '<tr><th>Reloj</th>' + days.map(k => '<th class="' + (k === today ? 'today' : '') + '">' + dLabel(k) + '</th>').join('') + '<th>Total</th></tr>';
+    rows.forEach(c => {
+      let sum = 0;
+      h += '<tr><td class="' + (c.deleted ? 'del' : '') + '">' + esc(c.name) + (c.deleted ? ' (elim.)' : '') + '</td>' +
+        days.map(k => { const v = get(k, c.id); sum += v; return '<td class="mono ed' + (v ? '' : ' z') + '" data-c="' + c.id + '" data-k="' + k + '">' + (v ? fmtHM(v) : '–') + '</td>'; }).join('') +
+        '<td class="mono"><b>' + fmtHM(sum) + '</b></td></tr>';
+    });
+    let grand = 0;
+    h += '<tr class="tot"><td>Total día</td>' + days.map(k => {
+      const v = rows.reduce((a, c) => a + get(k, c.id), 0); grand += v;
+      return '<td class="mono' + (v > LIMIT ? ' ov' : '') + '">' + fmtHM(v) + '</td>';
+    }).join('') + '<td class="mono">' + fmtHM(grand) + '</td></tr>';
+    $('semTable').innerHTML = h;
+  }
+
+  function header(){
+    const tot = todayTotal(), over = tot >= LIMIT;
+    $('total').textContent = fmt(tot);
+    $('total').classList.toggle('over', over);
+    const bar = $('bar');
+    bar.firstElementChild.style.width = Math.min(100, tot / LIMIT * 100) + '%';
+    bar.classList.toggle('over', over);
+    bar.classList.toggle('near', !over && tot >= LIMIT * 0.9);
+    const a = byId(S.activeId), st = $('status');
+    st.textContent = over
+      ? 'Superaste las 8 horas por ' + fmt(tot - LIMIT) + (a ? ' · corriendo: ' + a.name : '')
+      : (a ? 'Corriendo: ' + a.name : 'Todo en pausa') + ' · faltan ' + fmt(LIMIT - tot);
+    st.classList.toggle('over', over);
+  }
+
+  let lastMin = -1, lastDay = dkey(Date.now()), wasActive = null;
+  let lastTickAt = Date.now();
+  function tick(){
+    const nowT = Date.now();
+    quiet = NATIVE && nowT - lastTickAt > 3000;   // veníamos de segundo plano
+    lastTickAt = nowT;
+    commit();
+    checkAlerts();
+    quiet = false;
+    const a = byId(S.activeId);
+    if (S.activeId !== wasActive || dkey(Date.now()) !== lastDay){ wasActive = S.activeId; lastDay = dkey(Date.now()); save(true); render(); return; }
+    if (a){
+      const t = document.querySelector('[data-t="' + a.id + '"]'); if (t) t.textContent = cardMain(a);
+      const s = document.querySelector('[data-s="' + a.id + '"]'); if (s) s.textContent = cardSub(a);
+      const m = Math.floor(Date.now() / 60000); if (m !== lastMin){ lastMin = m; renderWeek(); }
+    }
+    header();
+    save();
+  }
+
+  // ---------- Mantener pantalla encendida ----------
+  let wlock = null, wlWanted = false;
+  let wlNative = false;
+  const isWake = () => !!wlock || wlNative;
+  async function setWake(on){
+    if (NATIVE){ wlNative = on; try { Android.keepScreenOn(on); } catch(e){} S.keepOn = on; save(true); paintWl(); return; }
+    wlWanted = on;
+    try {
+      if (on){ wlock = await navigator.wakeLock.request('screen'); wlock.addEventListener('release', () => { wlock = null; paintWl(); }); }
+      else if (wlock){ await wlock.release(); wlock = null; }
+    } catch(e){ if (on){ wlWanted = false; toast('Este navegador no permite mantener la pantalla encendida.'); } }
+    paintWl();
+  }
+  function paintWl(){ const b = $('wl'), on = isWake(); b.classList.toggle('on', on); b.textContent = '☀ Pantalla encendida: ' + (on ? 'sí' : 'no'); }
+
+  // ---------- Eventos ----------
+  $('list').addEventListener('click', e => {
+    const ed = e.target.closest('[data-ed]'); if (ed){ e.stopPropagation(); openEdit(ed.dataset.ed); return; }
+    const cf = e.target.closest('[data-cfg]'); if (cf){ e.stopPropagation(); openCfg(cf.dataset.cfg); return; }
+    const card = e.target.closest('.clock'); if (card) tap(card.dataset.id);
+  });
+  $('semTable').addEventListener('click', e => { const td = e.target.closest('td[data-c]'); if (td) openEdit(td.dataset.c, td.dataset.k); });
+  // mantener presionado el reloj = editar
+  let lpT = null, lpFired = false;
+  $('list').addEventListener('touchstart', e => { const card = e.target.closest('.clock'); if (!card || e.target.closest('button')) return; lpFired = false; lpT = setTimeout(() => { lpFired = true; vibe(40); openEdit(card.dataset.id); }, 600); }, { passive: true });
+  ['touchend','touchmove','touchcancel'].forEach(ev => $('list').addEventListener(ev, () => clearTimeout(lpT), { passive: true }));
+  $('list').addEventListener('click', e => { if (lpFired){ lpFired = false; e.stopImmediatePropagation(); } }, true);
+  document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => {
+    document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('sel', x === b));
+    document.querySelectorAll('.view').forEach(v => v.classList.toggle('sel', v.id === b.dataset.tab));
+    $('add').style.display = b.dataset.tab === 'vRel' ? '' : 'none';
+    if (b.dataset.tab === 'vSem') renderWeek();
+  }));
+  document.querySelectorAll('#cfgMode button').forEach(b => b.addEventListener('click', () => { cfgMode = b.dataset.m; paintMode(); }));
+  document.querySelectorAll('#cfgQuick button').forEach(b => b.addEventListener('click', () => setHMS('cfg', +b.dataset.q * 1000)));
+  document.querySelectorAll('#mEdit .quick button').forEach(b => b.addEventListener('click', () => setHMS('ed', Math.max(0, getHMS('ed') + +b.dataset.a * 1000))));
+  $('edDay').addEventListener('change', () => setHMS('ed', get($('edDay').value, edId)));
+  $('cfgSave').addEventListener('click', saveCfg);
+  $('cfgDel').addEventListener('click', delCfg);
+  $('cfgCancel').addEventListener('click', close);
+  $('edSave').addEventListener('click', saveEdit);
+  $('edCancel').addEventListener('click', close);
+  document.querySelectorAll('.ov-bg').forEach(o => o.addEventListener('click', e => { if (e.target === o) close(); }));
+  $('add').addEventListener('click', add);
+  $('resetWeek').addEventListener('click', resetWeek);
+  $('wl').addEventListener('click', () => { unlockAudio(); setWake(!isWake()); });
+  $('toast').addEventListener('click', () => $('toast').classList.remove('show'));
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden){ if (wlWanted && !wlock) setWake(true); tick(); render(); }
+    else { commit(); save(true); }
+  });
+  window.addEventListener('pagehide', () => { commit(); save(true); });
+
+  render();
+  if (NATIVE && S.keepOn) setWake(true);
+  resched();
+  setInterval(tick, 250);
+})();
+</script>
+</body>
+</html>
